@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+from pprint import pprint
+
+from os.path import isdir, exists, basename
+from os import walk
+from sys import exit
+import csv
 import os
 import sys
 import time
@@ -21,7 +27,7 @@ class Setup:
     '''
     ARGUMENT PARSER
     '''
-    parser = argparse.ArgumentParser(description='Program to parse SCAP Scanner output (.XML or .CSV) and create skeleton POAM documents.')
+    parser = argparse.ArgumentParser(description='Program to parse STIG Viewer .CSV output and create skeleton POAM documents.')
 
     '''
     REQUIRED ARGUMENTS
@@ -30,7 +36,7 @@ class Setup:
     required.add_argument(
     '--input',
     type=str,
-    help='Directory that contains the .XML and/or .CSV files exported from SCAP Scanner results.'
+    help='|dir|.csv| Directory that contains the .CSV files exported from STIG Viewer results or individual .csv file.'
     )
     '''
     OPTIONAL ARGUMENTS
@@ -74,13 +80,48 @@ class Setup:
     'dir_output_poams' : dir_output_poams
     }
 
-class Stig:
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+class stig_parser:
 
-    # 
+    def __init__(self, filename_csv):
+        if filename_csv == None or filename_csv == '':
+            print('[!] No filename specified!')
+            exit()
 
+        # Parse input values in order to find valid .csv files
+        self._csv_source = []
+        if isdir(filename_csv):
+            if not filename_csv.endswith('/'):
+                filename_csv += '/'
+            # Automatic searching of files into specified directory
+            for path, dirs, files in walk(filename_csv):
+                for f in files:
+                    if f.endswith('.csv'):
+                        self._csv_source.append(filename_csv + f)
+                break
+        elif filename_csv.endswith('.csv'):
+            if not exists(filename_csv):
+                print('[!] File [{}] does not exist.'.format(filename_csv))
+                exit()
+            self._csv_source.append(filename_csv)
+
+        if not self._csv_source:
+            print('[!] No file [{}] to parse was found!'.format(filename_csv))
+            exit()
+
+        # Dictionary to store information
+        self._results = {}
+
+        # For each .csv file found...
+        for report in self._csv_source:
+            # Parse and extract information
+            self._parse_results(report)
+
+    def _parse_results(self, file_report):
+        with open(file_report, encoding='UTF-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if row['Severity'] == 'medium':
+                    pprint(row)
 
 def main():
     '''
@@ -123,6 +164,12 @@ def main():
     '''
     ARGUMENT HANDLING
     '''
+
+    if not args.input:
+        print('[!] No operation specified!')
+        exit()
+
+    parser = stig_parser(args.input)
 
 if __name__ == '__main__':
     main()
