@@ -1,34 +1,32 @@
 #!/usr/bin/env python3
-
-from pprint import pprint
-
-from os.path import isdir, exists, basename
-from os import walk
-from sys import exit
-from socket import inet_aton
-import csv
-import os
-import sys
-import time
 import logging
-import getpass
-import argparse
+from re import sub
+from sys import exit
+from csv import reader
+from time import strftime
+from pprint import pprint
+from os import walk, getcwd, makedirs
+from getpass import getuser
+from socket import inet_aton
+from mailmerge import MailMerge
+from argparse import ArgumentParser
+from os.path import isdir, exists, basename, join
 
 class Setup:
     '''
     VARIABLES
     '''
-    version = '0.2'
-    program = os.path.basename(__file__)
+    version = '0.4'
+    program = basename(__file__)
     repository = 'https://github.com/ajhanisch/yet-another-stig-parser'
     wiki = 'https://github.com/ajhanisch/yet-another-stig-parser/wiki'
-    date = time.strftime('%Y-%m-%d_%H-%M-%S')
-    user = getpass.getuser()
+    date = strftime('%Y-%m-%d_%H-%M-%S')
+    user = getuser()
 
     '''
     ARGUMENT PARSER
     '''
-    parser = argparse.ArgumentParser(description='Program to perform extraction from .csv STIG Viewer files and creates customized output.')
+    parser = ArgumentParser(description='Program to perform extraction from .csv STIG Viewer files and creates customized output.')
 
     '''
     REQUIRED ARGUMENTS
@@ -44,18 +42,6 @@ class Setup:
     OPTIONAL ARGUMENTS
     '''
     parser.add_argument(
-    '--csv',
-    metavar='[filename]',
-    type=str,
-    help='Save results into csv report.'
-    )
-    parser.add_argument(
-    '--delim',
-    metavar='[delim]',
-    help='Use custom delimiter to save .csv report as.',
-    default=','
-    )
-    parser.add_argument(
     '--host',
     metavar='[host]',
     type=str,
@@ -67,10 +53,10 @@ class Setup:
     help='Print a list of hosts parsed. Full includes: (ip address, host name, and mac address.). Basic includes: (ip address and host name).'
     )
     parser.add_argument(
-    '--vulnid',
-    metavar='[Vuln ID]',
+    '--poams',
+    metavar='[template]',
     type=str,
-    help='Print a list of hosts vulnerable to specific STIG vulnerability ID.'
+    help='Create skeleton POAM documents from parsed files using [template] as template for documents.'
     )
     parser.add_argument(
     '--raw',
@@ -85,16 +71,16 @@ class Setup:
     help='Print statistisc about parsed files.'
     )
     parser.add_argument(
-    '--txt',
-    metavar='[filename]',
-    type=str,
-    help='Save results into text report.'
-    )
-    parser.add_argument(
     '--verbose',
     choices=[ 'debug', 'info', 'warning', 'error', 'critical' ],
     default='info',
     help='Enable specific program verbosity. Default is info. Set to debug for complete script processing in logs and screen. Set to warning or critical for minimal script processing in logs and screen.'
+    )
+    parser.add_argument(
+    '--vulnid',
+    metavar='[vulnid]',
+    type=str,
+    help='Print a list of hosts vulnerable to specific STIG vulnerability ID.'
     )
     '''
     VERSION
@@ -110,23 +96,23 @@ class Setup:
     '''
     DIRECTORIES
     '''
-    dir_working = os.getcwd()
-    dir_working_log = os.path.join(dir_working, 'LOGS', date)
-    dir_output = os.path.join(dir_working, 'OUTPUT')
-    dir_output_poams = os.path.join(dir_output, 'POAMS')
+    dir_working = getcwd()
+    dir_working_log = join(dir_working, 'LOGS', date)
+    dir_output = join(dir_working, 'OUTPUT')
+    dir_output_poams = join(dir_output, 'POAMS')
 
     '''
     FILES
     '''
-    file_log = os.path.join(dir_working_log, '{}_{}.log'.format(date, program))
+    file_log = join(dir_working_log, '{}_{}.log'.format(date, program))
 
     '''
     DICTIONARIES
     '''
     dict_directories = {
     'dir_working_log' : dir_working_log,
-    # 'dir_output' : dir_output,
-    # 'dir_output_poams' : dir_output_poams
+    'dir_output' : dir_output,
+    'dir_output_poams' : dir_output_poams
     }
 
 class stig_parser:
@@ -205,15 +191,58 @@ class stig_parser:
 
         # dictionary to store results
         self._results = {}
+        self.setup = Setup()
 
         for csv_source in self._csv_source:
             self.dict_results = self._parse_csv(csv_source)
 
-    def _create_poam(self):
+    def _create_poam(self, template):
         '''
         Save extracted information to skeleton POAM document.
         '''
-        finished = False
+        '''
+        Merge fields.
+
+        check_content
+        date
+        discussion
+        finding_details
+        fix_text
+        hosts
+        rule_id
+        severity
+        stig
+        stig_id
+        vuln_id
+        '''
+
+        list_created_poams = []
+        for host in self._results.keys():
+            for finding in self._results[host][1:]:
+                if finding['status'] != 'Not Finding' and finding['status'] != 'Not Applicable' and finding['vuln_id'] not in list_created_poams:
+                    if finding['severity'] == 'high':
+                        severity = 'CAT-1'
+                    elif finding['severity'] == 'medium':
+                        severity = 'CAT-2'
+                    elif finding['severity'] == 'low':
+                        severity = 'CAT-3'
+                    with MailMerge(template) as document:
+                        document.merge(
+                            check_content = finding['check_content'],
+                            date = self.setup.date.split('_')[0],
+                            discussion = finding['discussion'],
+                            finding_details = finding['finding_details'],
+                            fix_text = finding['fix_text'],
+                            hosts = ', '.join(self._find_by_vulnid(finding['vuln_id'][2:], 'list')),
+                            rule_id = finding['rule_id'],
+                            severity = finding['severity'],
+                            stig = finding['stig'],
+                            stig_id = finding['stig_id'],
+                            vuln_id = finding['vuln_id'],
+                            comments = finding['comments']
+                        )
+                        document.write(join(self.setup.dir_output_poams, '{}_{}_{}.docx'.format(sub('[^A-Za-z0-9]+', ' ', finding['stig']), severity, finding['vuln_id'])))
+                        list_created_poams.append(finding['vuln_id'])
 
     def _find_by_host(self, host):
         '''
@@ -235,7 +264,7 @@ class stig_parser:
             print('[!] No results found. Ensure [{}] is a valid host.'.format(host))
             exit()
 
-    def _find_by_vulnid(self, vulnid):
+    def _find_by_vulnid(self, vulnid, output='print'):
         '''
         Search information by STIG vulnid.
         '''
@@ -244,18 +273,24 @@ class stig_parser:
             print('[-] To search for V-12345: use --vulnid 12345]')
             exit()
 
+        hosts = []
         for host in self._results.keys():
             for finding in self._results[host][1:]:
                 vid = 'V-{}'.format(vulnid)
                 if finding['vuln_id'] == vid:
-                    print('{} {} {}'.format(host, vid, finding['rule_title'], self._results[host][0]['host_name']))
+                    if output == 'print':
+                        print('{} {} {}'.format(host, vid, finding['rule_title'], self._results[host][0]['host_name']))
+                    elif output == 'list':
+                        hosts.append(self._results[host][0]['host_name'])
+        if len(hosts) > 0:
+            return hosts
 
     def _parse_csv(self, file_report):
         with open(file_report, encoding='UTF-8') as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader, None)  # skip the headers
+            read = reader(csvfile)
+            next(read, None)  # skip the headers
 
-            for row in reader:
+            for row in read:
                 ip = row[2]
                 if not ip in self._results:
                     self._results[ip] = []
@@ -590,13 +625,6 @@ class stig_parser:
             print('\tNot applicable (medium):\t{}\t[  unique: {}  ]'.format(targets[host]['na_medium'], len(targets[host]['list_na_medium'])))
             print('\tNot applicable (low):\t\t{}\t[  unique: {}  ]'.format(targets[host]['na_low'], len(targets[host]['list_na_low'])))
 
-    def _save_csv(self, filename, delim=','):
-        '''
-        Save results into .csv report.
-        '''
-        if not filename.endswith('.csv'):
-            filename += '.csv'
-
 def main():
     '''
     MAIN FUNCTION
@@ -608,8 +636,8 @@ def main():
     REQUIRED DIRECTORIES CREATION
     '''
     for key, value in setup.dict_directories.items():
-        if not os.path.exists(value):
-            os.makedirs(value)
+        if not exists(value):
+            makedirs(value)
 
     '''
     SETUP LOGGING
@@ -642,18 +670,16 @@ def main():
 
     if args.hosts:
         parser._print_hosts(fullinfo=args.hosts)
-    if args.csv:
-        parser._save_csv(filename=args.csv, delim=args.delim)
-    if args.txt:
-        parser._save_txt(filename=args.txt)
     if args.vulnid:
-        parser._find_by_vulnid(vulnid=args.vulnid)
+        parser._find_by_vulnid(vulnid=args.vulnid, output='print')
     if args.host:
         parser._find_by_host(host=args.host)
     if args.raw:
         parser._print_raw()
     if args.stats:
         parser._print_statistics()
+    if args.poams:
+        parser._create_poam(template=args.poams)
 
     exit()
 
