@@ -5,7 +5,7 @@ from sys import exit
 from csv import reader
 from time import strftime
 from pprint import pprint
-from os import walk, getcwd, makedirs
+from os import walk, getcwd, makedirs, listdir
 from getpass import getuser
 from socket import inet_aton
 from mailmerge import MailMerge
@@ -16,7 +16,7 @@ class Setup:
     '''
     VARIABLES
     '''
-    version = '0.4'
+    version = '0.5'
     program = basename(__file__)
     repository = 'https://github.com/ajhanisch/yet-another-stig-parser'
     wiki = 'https://github.com/ajhanisch/yet-another-stig-parser/wiki'
@@ -196,53 +196,100 @@ class stig_parser:
         for csv_source in self._csv_source:
             self.dict_results = self._parse_csv(csv_source)
 
-    def _create_poam(self, template):
+    def _check_poams_created(self):
+        list_already_created_poams = []
+        for file in listdir(self.setup.dir_output_poams):
+            if file.endswith('.docx'):
+                vulnid = file.split('_')[2].split('.')[0]
+                list_already_created_poams.append(vulnid)
+        return list_already_created_poams
+
+    def _check_poams_to_create(self):
+        list_poams_to_create = []
+        for host in self._results.keys():
+            for finding in self._results[host][1:]:
+                if finding['vuln_id'] not in list_poams_to_create and finding['status'] != 'Not A Finding' and finding['status'] != 'Not Applicable':
+                    list_poams_to_create.append(finding['vuln_id'])
+        return list_poams_to_create
+
+    def _create_poams(self, template):
         '''
         Save extracted information to skeleton POAM document.
         '''
-        '''
-        Merge fields.
 
-        check_content
-        date
-        discussion
-        finding_details
-        fix_text
-        hosts
-        rule_id
-        severity
-        stig
-        stig_id
-        vuln_id
+        '''
+        Merge fields within template.docx.
+            check_content
+            date
+            discussion
+            finding_details
+            fix_text
+            hosts
+            rule_id
+            severity
+            stig
+            stig_id
+            vuln_id
         '''
 
-        list_created_poams = []
-        for host in self._results.keys():
-            for finding in self._results[host][1:]:
-                if finding['status'] != 'Not Finding' and finding['status'] != 'Not Applicable' and finding['vuln_id'] not in list_created_poams:
-                    if finding['severity'] == 'high':
-                        severity = 'CAT-1'
-                    elif finding['severity'] == 'medium':
-                        severity = 'CAT-2'
-                    elif finding['severity'] == 'low':
-                        severity = 'CAT-3'
-                    with MailMerge(template) as document:
-                        document.merge(
-                            check_content = finding['check_content'],
-                            date = self.setup.date.split('_')[0],
-                            discussion = finding['discussion'],
-                            finding_details = finding['finding_details'],
-                            fix_text = finding['fix_text'],
-                            hosts = ', '.join(self._find_by_vulnid(finding['vuln_id'][2:], 'list')),
-                            rule_id = finding['rule_id'],
-                            severity = finding['severity'],
-                            stig = finding['stig'],
-                            stig_id = finding['stig_id'],
-                            vuln_id = finding['vuln_id'],
-                            comments = finding['comments']
-                        )
-                        document.write(join(self.setup.dir_output_poams, '{}_{}_{}.docx'.format(sub('[^A-Za-z0-9]+', ' ', finding['stig']), severity, finding['vuln_id'])))
-                        list_created_poams.append(finding['vuln_id'])
+        # check for already created poams in OUTPUT/POAMS directory
+        list_poams_already_created = self._check_poams_created()
+        count_list_poams_already_created = len(list_poams_already_created)
+
+        # check for poams we need to create from input
+        list_poams_to_create = self._check_poams_to_create()
+        count_list_poams_to_create = len(list_poams_to_create)
+
+        # check difference between lists to see if anything needs to be created
+        poams_to_create_actual = list(set(list_poams_to_create) - set(list_poams_already_created)) # will contain the vulnid's that differ between the two lists
+        count_poams_to_create_actual = len(poams_to_create_actual)
+
+        if count_poams_to_create_actual == 0:
+            print('')
+            print('[*] Looks like we have [0] POAMs to create. See you next time!')
+            exit()
+        else:
+            print('')
+            print('[+] Looks like we have [{}] POAMs to create. Lets get started!'.format(count_poams_to_create_actual))
+            list_poams_created = []
+            for host in self._results.keys():
+                print('[-] Processing host [{}].'.format(host))
+                for finding in self._results[host][1:]:
+                    if finding['vuln_id'] not in list_poams_already_created:
+                        if finding['vuln_id'] not in list_poams_created:
+                            if finding['status'] != 'Not A Finding' and finding['status'] != 'Not Applicable':
+                                print('\t[-] POAM for finding [{}] has not been created yet.'.format(finding['vuln_id']))
+                                if finding['severity'] == 'high':
+                                    severity = 'CAT-1'
+                                elif finding['severity'] == 'medium':
+                                    severity = 'CAT-2'
+                                elif finding['severity'] == 'low':
+                                    severity = 'CAT-3'
+                                with MailMerge(template) as document:
+                                    document.merge(
+                                        check_content = finding['check_content'],
+                                        date = self.setup.date.split('_')[0],
+                                        discussion = finding['discussion'],
+                                        finding_details = finding['finding_details'],
+                                        fix_text = finding['fix_text'],
+                                        hosts = ', '.join(self._find_by_vulnid(finding['vuln_id'][2:], 'list')),
+                                        rule_id = finding['rule_id'],
+                                        severity = finding['severity'],
+                                        stig = finding['stig'],
+                                        stig_id = finding['stig_id'],
+                                        vuln_id = finding['vuln_id'],
+                                        comments = finding['comments']
+                                    )
+                                    document.write(join(self.setup.dir_output_poams, '{}_{}_{}.docx'.format(sub('[^A-Za-z0-9]+', ' ', finding['stig']), severity, finding['vuln_id'])))
+                                    list_poams_created.append(finding['vuln_id'])
+                                    print('\t\t[+] Finished creating POAM for finding [{}].'.format(finding['vuln_id']))
+                            else:
+                                continue # will not create poam for status of 'Not A Finding' and 'Not Applicable'
+                        else:
+                            print('\t[!] We created a POAM for [{}] this run.'.format(finding['vuln_id']))
+                    else:
+                        print('\t[!] Finding [{}] has existing POAM in [{}].'.format(finding['vuln_id'], self.setup.dir_output_poams))
+                print('[+] Finished processing host [{}].'.format(host))
 
     def _find_by_host(self, host):
         '''
@@ -679,7 +726,7 @@ def main():
     if args.stats:
         parser._print_statistics()
     if args.poams:
-        parser._create_poam(template=args.poams)
+        parser._create_poams(template=args.poams)
 
     exit()
 
