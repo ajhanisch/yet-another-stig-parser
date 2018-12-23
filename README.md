@@ -28,14 +28,14 @@ Check out the Wiki for specific guidance using YASP.
 
 # **USAGE**  
 Running the tool:  
-.\yasp.exe --input . [options]  
+`.\yasp.exe --input . [options]`   
   
 Typical Usage Example:  
 Generate starter POAM documents:  
-.\yasp.exe --input . --poams .\template.docx  
+`.\yasp.exe --input . --poams .\template.docx`  
   
 Generate statistics:  
-.\yasp.exe --input . --stats  
+`.\yasp.exe --input . --stats`  
   
 Display help menu:  
-.\yasp.exe --help  
+`.\yasp.exe --help`  
