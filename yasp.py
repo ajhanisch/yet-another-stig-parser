@@ -5,18 +5,18 @@ from sys import exit
 from csv import reader
 from time import strftime
 from pprint import pprint
-from os import walk, getcwd, makedirs, listdir
 from getpass import getuser
 from socket import inet_aton
 from mailmerge import MailMerge
 from argparse import ArgumentParser
+from os import walk, getcwd, makedirs, listdir
 from os.path import isdir, exists, basename, join
 
 class Setup:
     '''
     VARIABLES
     '''
-    version = '0.5'
+    version = '0.6'
     program = basename(__file__)
     repository = 'https://github.com/ajhanisch/yet-another-stig-parser'
     wiki = 'https://github.com/ajhanisch/yet-another-stig-parser/wiki'
@@ -165,7 +165,7 @@ class stig_parser:
 
     def __init__(self, filename_csv):
         if filename_csv == None or filename_csv == '':
-            print('[!] No filename specified!')
+            logging.error('[!] No filename specified!')
             exit()
 
         # Parse input values in order to find valid .csv files
@@ -181,12 +181,12 @@ class stig_parser:
                 break
         elif filename_csv.endswith('.csv'):
             if not exists(filename_csv):
-                print('[!] File [{}] does not exist.'.format(filename_csv))
+                logging.error('[!] File [{}] does not exist.'.format(filename_csv))
                 exit()
             self._csv_source.append(filename_csv)
 
         if not self._csv_source:
-            print('[!] No file [{}] to parse was found!'.format(filename_csv))
+            logging.error('[!] No file [{}] to parse was found!'.format(filename_csv))
             exit()
 
         # dictionary to store results
@@ -241,24 +241,22 @@ class stig_parser:
         count_list_poams_to_create = len(list_poams_to_create)
 
         # check difference between lists to see if anything needs to be created
-        poams_to_create_actual = list(set(list_poams_to_create) - set(list_poams_already_created)) # will contain the vulnid's that differ between the two lists
+        poams_to_create_actual = list(set(list_poams_to_create) - set(list_poams_already_created)) # will contain the vulnid's that differ between the two lists, if any
         count_poams_to_create_actual = len(poams_to_create_actual)
 
         if count_poams_to_create_actual == 0:
-            print('')
-            print('[*] Looks like we have [0] POAMs to create. See you next time!')
+            print('[*] Looks like we have [{}] POAMs to create. See you next time!'.format(count_poams_to_create_actual))
             exit()
         else:
-            print('')
-            print('[+] Looks like we have [{}] POAMs to create. Lets get started!'.format(count_poams_to_create_actual))
+            logging.info('[+] Looks like we have [{}] POAMs to create. Lets get started!'.format(count_poams_to_create_actual))
             list_poams_created = []
             for host in self._results.keys():
-                print('[-] Processing host [{}].'.format(host))
+                logging.info('[-] Processing host [{}].'.format(host))
                 for finding in self._results[host][1:]:
                     if finding['vuln_id'] not in list_poams_already_created:
                         if finding['vuln_id'] not in list_poams_created:
                             if finding['status'] != 'Not A Finding' and finding['status'] != 'Not Applicable':
-                                print('\t[-] POAM for finding [{}] has not been created yet.'.format(finding['vuln_id']))
+                                logging.info('\t[-] POAM for finding [{}] has not been created yet.'.format(finding['vuln_id']))
                                 if finding['severity'] == 'high':
                                     severity = 'CAT-1'
                                 elif finding['severity'] == 'medium':
@@ -282,14 +280,14 @@ class stig_parser:
                                     )
                                     document.write(join(self.setup.dir_output_poams, '{}_{}_{}.docx'.format(sub('[^A-Za-z0-9]+', ' ', finding['stig']), severity, finding['vuln_id'])))
                                     list_poams_created.append(finding['vuln_id'])
-                                    print('\t\t[+] Finished creating POAM for finding [{}].'.format(finding['vuln_id']))
+                                    logging.info('\t\t[+] Finished creating POAM for finding [{}].'.format(finding['vuln_id']))
                             else:
                                 continue # will not create poam for status of 'Not A Finding' and 'Not Applicable'
                         else:
-                            print('\t[!] We created a POAM for [{}] this run.'.format(finding['vuln_id']))
+                            logging.info('\t[!] We created a POAM for [{}] this run.'.format(finding['vuln_id']))
                     else:
-                        print('\t[!] Finding [{}] has existing POAM in [{}].'.format(finding['vuln_id'], self.setup.dir_output_poams))
-                print('[+] Finished processing host [{}].'.format(host))
+                        logging.info('\t[!] Finding [{}] has existing POAM in [{}].'.format(finding['vuln_id'], self.setup.dir_output_poams))
+                logging.info('[+] Finished processing host [{}].'.format(host))
 
     def _find_by_host(self, host):
         '''
@@ -298,7 +296,7 @@ class stig_parser:
         try:
             inet_aton(host) # test for valid ip address
         except OSError:
-            print('[!] IP address format error in [{}].'.format(host))
+            logging.error('[!] IP address format error in [{}].'.format(host))
             exit()
 
         if host in self._results:
@@ -308,7 +306,7 @@ class stig_parser:
                     for finding in self._results[h][1:]:
                         print('{} {} {}'.format(finding['vuln_id'], finding['status'], finding['severity']))
         else:
-            print('[!] No results found. Ensure [{}] is a valid host.'.format(host))
+            logging.error('[!] No results found. Ensure [{}] is a valid host.'.format(host))
             exit()
 
     def _find_by_vulnid(self, vulnid, output='print'):
@@ -316,8 +314,8 @@ class stig_parser:
         Search information by STIG vulnid.
         '''
         if len(vulnid) != 5 or not vulnid.isdigit():
-            print('[!] Vuln ID format error in [{}].'.format(vulnid))
-            print('[-] To search for V-12345: use --vulnid 12345]')
+            logging.error('[!] Vuln ID format error in [{}].'.format(vulnid))
+            logging.error('[-] To search for V-12345: use --vulnid 12345]')
             exit()
 
         hosts = []
@@ -383,7 +381,7 @@ class stig_parser:
                 if not finding in self._results[ip]:
                     self._results[ip].append(finding)
                 else:
-                    print('[!] Duplicate finding! Finding [{}] already exists for host [{}].'.format(finding['rule_title'], ip))
+                    logging.error('[!] Duplicate finding! Finding [{}] already exists for host [{}].'.format(finding['rule_title'], ip))
                     exit(1)
 
     def _print_hosts(self, fullinfo=False):
@@ -403,7 +401,7 @@ class stig_parser:
         if self._results:
             pprint(self._results)
         else:
-            print('[!] No information available.')
+            logging.error('[!] No information available.')
 
     def _print_statistics(self):
         '''
@@ -710,7 +708,7 @@ def main():
     ARGUMENT HANDLING
     '''
     if not args.input:
-        print('[!] No operation specified!')
+        logging.error('[!] No operation specified!')
         exit()
 
     parser = stig_parser(args.input)
