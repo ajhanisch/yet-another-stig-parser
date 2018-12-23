@@ -28,7 +28,7 @@ Check out the Wiki for specific guidance using YASP.
 
 # **USAGE**  
 Running the tool:  
-.\yasp.py --input [options]  
+.\yasp.py --input . [options]  
   
 Typical Usage Example:  
 Generate starter POAM documents:  
