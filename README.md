@@ -24,7 +24,7 @@ Generates statistics from .csv files given to parse. Can be given as many export
 Depending on which version (.exe or .py) of yasp you choose to use, additional steps may or may not be needed to use yasp. If you choose to use the .exe version, you will NOT need to install Python or any dependencies to start successfully using yasp. If you choose to use the .py version, ensure to have a 3+ version of Python installed in your environment.
   
 # **DOCUMENTATION**  
-Check out the Wiki for specific guidance using YASP.  
+Check out the [Wiki](https://github.com/ajhanisch/yet-another-stig-parser/wiki) for specific guidance using YASP.  
 
 # **USAGE**  
 Running the tool:  
