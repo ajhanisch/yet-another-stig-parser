@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import logging
 from re import sub
 from time import strftime
 from csv import DictReader
