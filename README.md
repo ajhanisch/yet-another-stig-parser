@@ -12,7 +12,7 @@ pip install -r requirements.txt
   
 ## Features  
 - Simple command line interface
-- Ability to organize results from any amount of STIG Viewer .csv files
+- Ability to parse, organize, and present STIG/POA&M data from any amount of .csv files exported from STIG Viewer
   - Current output is formatted, styled, multi-tab excel document
   - Additional output options will be added as development continues
   
