@@ -1,2 +1,2 @@
-docx-mailmerge==0.4.0
 lxml==4.3.4
+XlsxWriter==1.1.8
