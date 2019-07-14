@@ -1,41 +1,20 @@
-# **yasp**  
-Yet Another STIG Parser  
-  
-STIG / POAM management automation.  
+# **Yet Another STIG Parser**  
 
-Author: Ashton J. Hanisch < <ajhanisch@gmail.com> >  
-  
-# **SYNOPSIS**  
-Script to help automate STIG / POAM management.
+## Installation  
+No installation is needed in order to get a copy of the project up and running if you utilize one of the two compiled versions (Windows .exe or Linux elf) included. 
 
-# **DESCRIPTION**  
-Script designed to focus on STIG / POAM management and less on individual STIG compliance automation. Designed to help with automated relevant POAM generation and automated statistic calculation and presentation.
+If you utilize the standard .py file, you will need to have >= Python 3.6.X installed in your environment along with the dependencies within the `requirements.txt` file.
 
-# **FEATURES**  
-* Built-in POAM Generation. 
+The following will install all required dependencies.
+```python
+pip install -r requirements.txt
+```
   
-Generates starter POAM documents from .csv files given to parse. Can be given as many exported STIG .csv files as needed to parse. Documents will contain working digital signature blocks for all needing to sign. Documents generated will be unique to vulnerability. If multiple hosts with the same STIG .csv file sharing multiple vulnerabilities, you will get one POAM for each vulnerability and have all effected hosts listed in that single POAM.  
-
-* Built-in Statistics Generation.  
+## Features  
+- Simple command line interface
+- Ability to organize results from any amount of STIG Viewer .csv files
+  - Current output is formatted, styled, multi-tab excel document
+  - Additional output options will be added as development continues
   
-Generates statistics from .csv files given to parse. Can be given as many exported STIG .csv files as needed to parse.  
-
-# **CONSIDERATIONS**  
-Depending on which version (.exe or .py) of **yasp** you choose to use, additional steps may or may not be needed to use **yasp**. If you choose to use the .exe version, you will NOT need to install Python or any dependencies to start successfully using **yasp**. If you choose to use the .py version, ensure to have a 3+ version of Python installed in your environment.
-  
-# **DOCUMENTATION**  
-Check out the [Wiki](https://github.com/ajhanisch/yet-another-stig-parser/wiki) for specific guidance using **yasp**.  
-
-# **USAGE**  
-Running the tool:  
-`.\yasp.exe --input . [options]`   
-  
-Typical Usage Example:  
-Generate starter POAM documents:  
-`.\yasp.exe --input . --poams .\template.docx`  
-  
-Generate statistics:  
-`.\yasp.exe --input . --stats`  
-  
-Display help menu:  
-`.\yasp.exe --help`  
+## Quickstart  
+Check out the Yet Another STIG Parser [Wiki](https://github.com/ajhanisch/yet-another-stig-parser/wiki) for instructions on getting started with Yet Another STIG Parser.
