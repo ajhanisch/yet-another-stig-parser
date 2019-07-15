@@ -18,7 +18,6 @@ class Setup:
     repository = 'https://github.com/ajhanisch/yet-another-stig-parser'
     wiki = 'https://github.com/ajhanisch/yet-another-stig-parser/wiki'
     date = strftime('%Y-%m-%d_%H-%M-%S')
-    user = getuser()
 
     '''
     ARGUMENT PARSER
@@ -59,28 +58,6 @@ class Setup:
     )
 
     args = parser.parse_args()
-
-    '''
-    DIRECTORIES
-    '''
-    dir_working = getcwd()
-    dir_working_log = join(dir_working, 'logs')
-    dir_output = join(dir_working, 'output')
-    dir_output_poams = join(dir_output, 'poams')
-
-    '''
-    FILES
-    '''
-    file_log = join(dir_working_log, '{}_{}.log'.format(date, program))
-
-    '''
-    DICTIONARIES
-    '''
-    dict_directories = {
-        'dir_working_log' : dir_working_log,
-        'dir_output' : dir_output,
-        'dir_output_poams' : dir_output_poams
-    }
 
 class StigParser:
 
@@ -152,7 +129,7 @@ class StigParser:
         dict_switch[format_option]()
 
     def create_stig_poams_dashboard_excel(self):
-        workbook = Workbook('hello.xlsx')
+        workbook = Workbook('STIG_Category_Report_{}.xlsx'.format(self.setup.date))
 
         '''
         Headers used by Category and Completed POA&M tabs.
@@ -584,13 +561,6 @@ def main():
         print('No operation specified!')
         exit()
 
-    '''
-    REQUIRED DIRECTORIES CREATION
-    '''
-    for value in setup.dict_directories.values():
-        if not exists(value):
-            makedirs(value)
-
     parser = StigParser(args.input)
 
     '''
@@ -602,4 +572,3 @@ def main():
     exit()
 
 if __name__ == '__main__':
-    main()
