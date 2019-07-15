@@ -31,6 +31,7 @@ class Setup:
     required = parser.add_argument_group('Required', 'Ensure to use all of these parameters to run [{}] successfully.'.format(program))
     required.add_argument(
         '--input',
+        '-i',
         metavar='[dir | .csv]',
         type=str,
         help='Directory that contains the .csv file(s) exported from STIG Viewer results or an individual .csv file.'
@@ -41,6 +42,7 @@ class Setup:
     '''
     parser.add_argument(
         '--output',
+        '-o',
         choices=['excel'],
         default='excel',
         help='output summary from parsed files.'
